@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>MultiScreen - YouTube Multi Player</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h1 { text-align: center; color: #38bdf8; margin-bottom: 5px; }
+    p.subtitle { text-align: center; color: #94a3b8; margin-bottom: 25px; }
+    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .plan-card { background: #334155; border: 2px solid #475569; border-radius: 10px; padding: 15px; text-align: center; cursor: pointer; transition: 0.3s; }
+    .plan-card:hover, .plan-card.active { border-color: #38bdf8; background: #1e293b; transform: translateY(-3px); }
+    .plan-card h3 { margin: 0 0 10px 0; color: #f1f5f9; }
+    .plan-card .price { font-size: 20px; font-weight: bold; color: #38bdf8; }
+    .plan-card .details { font-size: 13px; color: #cbd5e1; margin-top: 8px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; color: #cbd5e1; }
+    input, select { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 15px; }
+    .start-btn { width: 100%; padding: 15px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+    .start-btn:hover { background: #dc2626; }
+    .status-bar { margin-top: 20px; padding: 15px; background: #0f172a; border-radius: 8px; display: none; text-align: center; font-size: 16px; border: 1px solid #38bdf8; }
+    .timer { font-size: 24px; font-weight: bold; color: #4ade80; margin-top: 5px; }
+    .screens-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 25px; }
+    iframe { width: 100%; height: 120px; border: none; border-radius: 6px; background: #000; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #1e293b; padding: 25px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; border: 1px solid #38bdf8; position: relative; }
+    .modal-content h3 { margin-top: 0; color: #38bdf8; }
+    .qr-box { background: #fff; padding: 10px; border-radius: 8px; display: inline-block; margin: 10px 0; }
+    .qr-box img { width: 180px; height: 180px; display: block; }
+    .upi-details { background: #0f172a; padding: 10px; border-radius: 6px; font-size: 14px; margin-bottom: 12px; }
+    .pay-now-link { display: inline-block; background: #0284c7; color: #fff; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-bottom: 12px; }
+    .close-btn { position: absolute; right: 15px; top: 10px; font-size: 22px; cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>MultiScreen Hub</h1>
+  <p class="subtitle">Plan select karein, link dalein aur background multiscreen start karein</p>
+
+  <label>Step 1: Plan Select Karein</label>
+  <div class="plans">
+    <div class="plan-card active" onclick="selectPlan('trial', 0, 15, [50, 100], this)">
+      <h3>Free Trial</h3>
+      <div class="price">Free</div>
+      <div class="details">50 - 100 Screens<br>15 Minutes Limit</div>
+    </div>
+    <div class="plan-card" onclick="selectPlan('paid', 499, 30, [500, 1000], this)">
+      <h3>Standard Plan</h3>
+      <div class="price">₹499</div>
+      <div class="details">500 - 1,000 Screens<br>30 Minutes Limit</div>
+    </div>
+    <div class="plan-card" onclick="selectPlan('paid', 999, 60, [2000, 4000], this)">
+      <h3>Premium Plan</h3>
+      <div class="price">₹999</div>
+      <div class="details">2,000 - 4,000 Screens<br>1 Hour Limit</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Step 2: YouTube Video URL Paste Karein</label>
+    <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=... ya Shorts link">
+  </div>
+
+  <div class="form-group">
+    <label>Step 3: Screen Count Chunein</label>
+    <select id="screenCountSelect"></select>
+  </div>
+
+  <button class="start-btn" onclick="handleStartProcess()">Start MultiScreen Now</button>
+
+  <div class="status-bar" id="statusBar">
+    <div id="statusMessage">Screens chal rahi hain...</div>
+    <div class="timer" id="timerDisplay">00:00</div>
+  </div>
+
+  <div class="screens-container" id="screensContainer"></div>
+</div>
+
+<div class="modal" id="paymentModal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeModal()">&times;</span>
+    <h3>Complete Payment</h3>
+    <p style="margin: 5px 0; color: #94a3b8;">Plan Amount: <b id="payAmountText" style="color: #4ade80;">₹0</b></p>
+
+    <div class="qr-box">
+      <img id="upiQrImg" src="" alt="Payment QR Code">
+    </div>
+
+    <div class="upi-details">
+      Name: <b>JITENDRA KUSHWAH</b><br>
+      UPI ID: <b style="color: #38bdf8;">6262887550@nyes</b>
+    </div>
+
+    <a id="upiPayBtn" href="#" class="pay-now-link">Pay via UPI App</a>
+
+    <div style="margin-top: 10px; text-align: left;">
+      <label style="font-size: 12px;">Transaction / UTR No.:</label>
+      <input type="text" id="utrNumber" placeholder="12 Digit UTR / Ref No." style="margin-bottom: 8px;">
+      <button class="start-btn" style="padding: 10px; font-size: 15px; background: #22c55e;" onclick="confirmPaymentAndStart()">Verify & Launch Screens</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentPlanType = 'trial';
+  let currentPrice = 0;
+  let currentMinutes = 15;
+  let timerInterval = null;
+  const upiId = "6262887550@nyes";
+  const upiName = "JITENDRA KUSHWAH";
+
+  window.onload = function() {
+    updateScreenOptions([50, 100]);
+  };
+
+  function updateScreenOptions(options) {
+    const select = document.getElementById('screenCountSelect');
+    select.innerHTML = '';
+    options.forEach(opt => {
+      const el = document.createElement('option');
+      el.value = opt;
+      el.innerText = `${opt} Screens`;
+      select.appendChild(el);
+    });
+  }
+
+  function selectPlan(planType, price, durationMin, screenOptions, cardElement) {
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('active'));
+    cardElement.classList.add('active');
+    currentPlanType = planType;
+    currentPrice = price;
+    currentMinutes = durationMin;
+    updateScreenOptions(screenOptions);
+  }
+
+  function extractYouTubeID(url) {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  }
+
+  function handleStartProcess() {
+    const url = document.getElementById('videoUrl').value.trim();
+    const videoId = extractYouTubeID(url);
+
+    if (!videoId) {
+      alert('Kripya valid YouTube video link dalein!');
+      return;
+    }
+
+    if (currentPlanType === 'trial') {
+      launchScreens(videoId);
+    } else {
+      openPaymentModal();
+    }
+  }
+
+  function openPaymentModal() {
+    document.getElementById('payAmountText').innerText = `₹${currentPrice}`;
+    const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${currentPrice}&cu=INR`;
+    document.getElementById('upiPayBtn').href = upiUri;
+    document.getElementById('upiQrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiUri)}`;
+    document.getElementById('paymentModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+  }
+
+  function confirmPaymentAndStart() {
+    const utr = document.getElementById('utrNumber').value.trim();
+    const url = document.getElementById('videoUrl').value.trim();
+    const videoId = extractYouTubeID(url);
+
+    if (utr.length < 6) {
+      alert('Kripya valid Transaction ID / UTR number dalein!');
+      return;
+    }
+    closeModal();
+    alert('Payment Received! Screens launch ho rahi hain.');
+    launchScreens(videoId);
+  }
+
+  function launchScreens(videoId) {
+    const count = parseInt(document.getElementById('screenCountSelect').value, 10);
+    const container = document.getElementById('screensContainer');
+    const statusBar = document.getElementById('statusBar');
+
+    container.innerHTML = '';
+    clearInterval(timerInterval);
+    statusBar.style.display = 'block';
+
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1`;
+
+    let created = 0;
+    function addScreens() {
+      const fragment = document.createDocumentFragment();
+      const batchSize = Math.min(15, count - created);
+
+      for (let i = 0; i < batchSize; i++) {
+        const iframe = document.createElement('iframe');
+        iframe.src = embedUrl;
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+        iframe.setAttribute("allowfullscreen", "");
+        fragment.appendChild(iframe);
+      }
+
+      container.appendChild(fragment);
+      created += batchSize;
+
+      if (created < count) {
+        setTimeout(addScreens, 70);
+      }
+    }
+    addScreens();
+
+    let totalSeconds = currentMinutes * 60;
+    updateTimerText(totalSeconds);
+
+    timerInterval = setInterval(() => {
+      totalSeconds--;
+      updateTimerText(totalSeconds);
+
+      if (totalSeconds <= 0) {
+        clearInterval(timerInterval);
+        container.innerHTML = '';
+        document.getElementById('statusMessage').innerText = "Aapka plan time poora ho chuka hai. Screens band kar di gayi hain.";
+        document.getElementById('timerDisplay').innerText = "00:00";
+        alert('Time Complete! Multi-screens stop ho chuki hain.');
+      }
+    }, 1000);
+  }
+
+  function updateTimerText(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    document.getElementById('timerDisplay').innerText = 
+      `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s} Left`;
+  }
+</script>
+
+</body>
+</html>
